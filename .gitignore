@@ -1,0 +1,6 @@
+# Python installation
+*.egg-info
+
+
+# Python runtime files
+*.pyc

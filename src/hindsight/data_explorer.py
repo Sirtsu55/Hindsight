@@ -1,0 +1,100 @@
+from __future__ import annotations
+from hindsight.primitives import Candle
+from enum import Enum
+import talib as ta
+import numpy as np
+
+class CandleSource(Enum):
+    Open  = 0
+    High  = 1
+    Low   = 2
+    Close = 3
+
+class DataExplorer:
+    def __init__(self, candles: list[Candle]):
+        self.candles : list[Candle] = candles
+        self.ohlc : dict[CandleSource, np.ndarray] = {
+            CandleSource.Open: np.fromiter((candle.open for candle in self.candles), dtype=np.float64),
+            CandleSource.High: np.fromiter((candle.high for candle in self.candles), dtype=np.float64),
+            CandleSource.Low: np.fromiter((candle.low for candle in self.candles), dtype=np.float64),
+            CandleSource.Close: np.fromiter((candle.close for candle in self.candles), dtype=np.float64)
+        }
+        self.techs : dict = {}
+        pass
+
+    def get_local_explorer(self, index: int) -> LocalDataExplorer:
+        return LocalDataExplorer(self, index)
+
+    def get_candle_at(self, index: int) -> Candle | None:
+        if(index < 0 or index >= len(self.candles)):
+            return None
+        return self.candles[index]
+
+    def has_tech(self,  type: str, props: dict) -> bool:
+        if(type in self.techs.keys()):
+            tech_data : list = self.techs[type]
+            for tech in tech_data:
+                if(tech["properties"] == props):
+                    return True
+        else:
+            False  
+
+    def get_tech(self, index: int, type: str, props: dict) -> float:
+        if(type in self.techs.keys()):
+            tech_data : list = self.techs[type]
+            for tech in tech_data:
+                if(tech["properties"] == props):
+                    return tech["value"][index]                    
+        else:
+            self.techs[type] = []
+
+        data = self.ta_calculate(type, props)
+        self.techs[type].append({
+            "properties": props,
+            "value": data
+        })
+        return data[index]
+
+    def get_tech_full(self, type: str, props: dict) -> np.ndarray:
+        if(type in self.techs.keys()):
+            tech_data : list = self.techs[type]
+            for tech in tech_data:
+                if(tech["properties"] == props):
+                    return tech["value"]                  
+        else:
+            self.techs[type] = []
+
+        data = self.ta_calculate(type, props)
+        self.techs[type].append({
+            "properties": props,
+            "value": data
+        })
+        return data
+
+    def get_ma(self, period: int, source : CandleSource = CandleSource.Close) -> np.ndarray:
+        return self.get_tech_full("SMA", {
+            "period": period,
+            "source" : source
+        })
+
+
+    def ta_calculate(self, type: str, props: dict) -> np.ndarray:
+        source : CandleSource = props["source"]
+        if(type == "SMA"):
+            return ta.SMA(self.ohlc[source], props["period"])
+        
+        return np.ndarray([])
+
+class LocalDataExplorer:
+    def __init__(self, parent : DataExplorer, index: int):
+        self.parent : DataExplorer = parent
+        self.index : int = index
+
+    def get_current_candle(self) -> Candle | None:
+        return self.parent.get_candle_at(self.index)
+
+    def get_tech_sma(self, period: int, source : CandleSource = CandleSource.Close) -> float:
+        return self.parent.get_tech(self.index, "SMA", {
+            "period": period,
+            "source" : source
+        })
