@@ -112,6 +112,12 @@ class LocalDataExplorer:
     def get_current_candle(self) -> Candle | None:
         return self.parent.get_candle_at(self.index)
 
+    def get_future_candle(self, offset: int = 1) -> Candle | None:
+        return self.parent.get_candle_at(self.index + offset)
+    
+    def get_past_candle(self, offset: int = 1) -> Candle | None:
+        return self.parent.get_candle_at(self.index - offset)
+
     def get_tech_sma(self, period: int, source : CandleSource = CandleSource.Close) -> float:
         return self.parent.get_tech(self.index, "SMA", {
             "period": period,
