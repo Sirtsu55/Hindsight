@@ -10,15 +10,18 @@ class Filter(ABC):
     def run(self, explorer: LocalDataExplorer) -> bool:
         ...
 
+    @abstractmethod
+    def passthrough(self) -> np.ndarray | None:
+        ...
+
 
 class FilterPipeline:
     def __init__(self, filters: list[Filter]):
         self.filters : list[Filter]= filters
-        self.candle_mask : np.ndarray[bool] = []
 
-    def run(self, explorer: DataExplorer) -> None:
+    def run(self, explorer: DataExplorer) -> np.ndarray:
         total_candles = len(explorer.candles)
-        self.candle_mask : np.ndarray = np.ones(total_candles, dtype=bool)
+        candle_mask : np.ndarray[bool] = np.ones(total_candles, dtype=bool)
 
         print(f"Processing {len(explorer.candles)} candles")
         print("-" * 20)
@@ -28,12 +31,17 @@ class FilterPipeline:
             discard_count = 0
             passed_count = 0
             for ci in range(total_candles):
-                if(self.candle_mask[ci]):
-                    self.candle_mask[ci] = filter.run(explorer.get_local_explorer(ci))
-                    if(self.candle_mask[ci]):
+                if(candle_mask[ci]):
+                    passed = filter.run(explorer.get_local_explorer(ci))
+                    if(passed):
                         passed_count += 1
                     else:
                         discard_count += 1
+                    candle_mask[ci] = passed
+
+            force_passes = filter.passthrough()
+            if(force_passes is not None):
+                candle_mask[force_passes] = True
 
             # Print out how many candles the filter passed out of all candles
             filter_name = filter.__class__.__name__
@@ -41,3 +49,6 @@ class FilterPipeline:
             print(f"Candles Discarded: {discard_count}")
             print(f"Candles Passed: {passed_count}")
             print("-" * 20)
+
+        return candle_mask 
+    
