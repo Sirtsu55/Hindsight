@@ -30,6 +30,8 @@ class FilterPipeline:
             filter.prepare(explorer)
             discard_count = 0
             passed_count = 0
+            passthrough_count = 0
+            processed_count = 0
             for ci in range(total_candles):
                 if(candle_mask[ci]):
                     passed = filter.run(explorer.get_local_explorer(ci))
@@ -38,16 +40,20 @@ class FilterPipeline:
                     else:
                         discard_count += 1
                     candle_mask[ci] = passed
+                    processed_count += 1
 
             force_passes = filter.passthrough()
             if(force_passes is not None):
                 candle_mask[force_passes] = True
-
+                passthrough_count = len(force_passes)
+                
             # Print out how many candles the filter passed out of all candles
             filter_name = filter.__class__.__name__
             print(f"Filter: {filter_name}")
-            print(f"Candles Discarded: {discard_count}")
+            print(f"Candles Processed: {processed_count}")
             print(f"Candles Passed: {passed_count}")
+            print(f"Candles Discarded: {discard_count}")
+            print(f"Candles Passthrough: {passthrough_count}")
             print("-" * 20)
 
         return candle_mask 
